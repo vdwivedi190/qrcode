@@ -179,17 +179,18 @@ def add_version(qrmat, ver_arr):
 
 # Function to compute the number of functional modules in the QR-code matrix
 def compute_num_fmods(version, size, num_algn):     
-    num_cornermods = 3*CORNERLEN**2 
-    num_quietmods = 2*CORNERLEN+1
-    num_darkmods = 1
-    num_formatmods = 2*CORNERLEN+1
+    num_cornermods = 3*CORNERLEN**2     # Corner blocks x 3
+    num_quietmods = 3*(2*CORNERLEN+1)   # Quiet zone around corner blocks x 3
+    num_formatmods = 2*(2*CORNERLEN+1)  # Format and pattern string x 2 
+    num_timemods = 2*(size - 2*(CORNERLEN+1))  # Timing strip x 2 
+    num_darkmods = 1   # Dark module 
 
-    # Need to double check this!!
+    # Overcounting for version>7, since alignment blocks sit on top of the timing lines
+    # NEED TO FIX THIS!
     num_algnmods = num_algn*BLOCKLEN**2
-    num_timemods = 2*(size - (2*CORNERLEN+3))
 
     if version >= 7:
-        num_vermods = 3*(CORNERLEN-1)
+        num_vermods = 2*3*(CORNERLEN-1)  # Version info x 2
     else:
         num_vermods = 0
     

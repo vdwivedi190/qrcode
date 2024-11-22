@@ -1,8 +1,8 @@
 import numpy as np 
 from .populate import CORNERLEN
 from .populate import add_format, add_version
-from .errcorrection import append_format_ecbits, compute_version_ecbits
-# from .gen import int_to_bool
+from .errcorrection import append_format_ecbits, append_version_ecbits
+from .general import int_to_bool
 
 # Function to generate the format string for a given error level and mask number
 def gen_format_arr(errlvl, masknum):
@@ -66,7 +66,7 @@ def pattern_mask(qrmat, version, errlvl, fmask):
 
     for masknum in range(1,7): 
         cur_qrmat = np.copy(qrmat)
-        fmt = gen_format(errlvl, masknum)
+        fmt = gen_format_arr(errlvl, masknum)
         add_format(cur_qrmat, fmt)
         
         # Apply the pattern mask to the current QR-code matrix
