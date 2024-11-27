@@ -4,6 +4,11 @@ from .populate import add_format, add_version
 from .errcorrection import append_format_ecbits, append_version_ecbits
 from .general import int_to_bool
 
+# Remove this after debugging!
+from .display import qrdisplay, qrdisplay_all
+
+
+
 # Function to generate the format string for a given error level and mask number
 def gen_format_arr(errlvl, masknum):
     # Initialize the format string
@@ -13,7 +18,7 @@ def gen_format_arr(errlvl, masknum):
     fmt[0:2] = int_to_bool(errlvl,2) 
     
     # The next three bits are the mask pattern number      
-    fmt[2:5] = int_to_bool(masknum,3)      
+    fmt[2:5] = int_to_bool(masknum,3)
 
     # Add the error correction bits to the format string
     append_format_ecbits(fmt)
@@ -22,6 +27,7 @@ def gen_format_arr(errlvl, masknum):
 
 
 # Function to generate the pattern masks for a given size
+# DOUBLE CHECK THIS FUNCTION: SOME OF THESE DO NOT SEEM TO BE CORRECT!!
 def gen_pmasks(size):
     #  Initialize a 3d array to hold all masks for a given size 
     pmasks = np.zeros((8,size,size), dtype=bool)
@@ -45,16 +51,15 @@ def score_mask(qrmat):
     return 0
 
 
+
 def pattern_mask(qrmat, version, errlvl, fmask):
     # Generate pattern masks
     size = 4*version + 17
-    pmasks = gen_pmasks(size)
-
-    # We start by masking with pattern 0
-    fmt = gen_format_arr(errlvl, 0)
-    best_qrmat = np.copy(qrmat)
+    pmasks = gen_pmasks(size) 
     
-    # Add the format string (consisting of format and mask number) to the QR-code matrix 
+    # Add the format string (consisting of format and mask number) to a copy of the QR-code matrix 
+    best_qrmat = qrmat.copy()
+    fmt = gen_format_arr(errlvl, 0)
     add_format(best_qrmat, fmt)
 
     # Apply the pattern mask to the QR-code matrix
@@ -64,21 +69,21 @@ def pattern_mask(qrmat, version, errlvl, fmask):
     # Evaluate the score of the masked QR-code matrix
     high_score = score_mask(best_qrmat) 
 
-    for masknum in range(1,7): 
-        cur_qrmat = np.copy(qrmat)
+    for masknum in range(1,8): 
+        cur_qrmat = qrmat.copy()
         fmt = gen_format_arr(errlvl, masknum)
-        add_format(cur_qrmat, fmt)
+        add_format(cur_qrmat, fmt)        
         
         # Apply the pattern mask to the current QR-code matrix
         combined_mask = np.logical_and(fmask, pmasks[masknum])
         np.logical_xor(cur_qrmat, combined_mask, out=cur_qrmat)
-        
+
         cur_score = score_mask(cur_qrmat)
 
         # If the current mask is better that the previous best, then update the best mask
         if high_score < cur_score:
+            print("Updating best mask to #", masknum)
             high_score = cur_score
             best_qrmat = cur_qrmat
 
-    qrmat = best_qrmat
-    return high_score
+    return best_qrmat

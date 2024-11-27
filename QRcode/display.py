@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Function to display the QR code and mask
-def display(qrmat):
+def qrdisplay(qrmat):
     fig, ax = plt.subplots(1, 1, figsize=(14, 6))
     ax.axis('off')
     fig.subplots_adjust(left=0.25, right=0.75, top=0.75, bottom=0.25)
@@ -20,7 +20,9 @@ def display(qrmat):
 
 
 # Function to display the QR code and mask
-def display_all(qrmat, mask): 
+def qrdisplay_all(qrmat, mask): 
+    qrsize = qrmat.shape[0]
+
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 6))
     plt.subplots_adjust(wspace=0.5)  # Increase the space between the two figures
 
@@ -28,8 +30,8 @@ def display_all(qrmat, mask):
     qr_image = Image.fromarray(np.uint8(~qrmat) * 255)
     ax1.imshow(qr_image, cmap='gray', vmin=0, vmax=1)
     ax1.set_title("QR Code")
-    # ax1.set_xticks(np.arange(-.5, qrsize, 1), minor=True)
-    # ax1.set_yticks(np.arange(-.5, qrsize, 1), minor=True)
+    ax1.set_xticks(np.arange(-.5, qrsize, 1), minor=True)
+    ax1.set_yticks(np.arange(-.5, qrsize, 1), minor=True)
     ax1.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
     ax1.tick_params(which='minor', size=0)
 
