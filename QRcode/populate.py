@@ -8,7 +8,7 @@ CORNERLEN = 7      # Side length of the corner block
 
 
 # Function to add the corner blocks to a given QR-code matrix
-def add_corner(qrmat):
+def add_corner_and_timing(qrmat):
     # Define the corner block 
     cblock = np.zeros((CORNERLEN, CORNERLEN), dtype=bool)
     cblock[2:CORNERLEN-2, 2:CORNERLEN-2] = True         # Central square 
@@ -25,11 +25,9 @@ def add_corner(qrmat):
     # Place the "dark module"
     qrmat[-CORNERLEN-1,CORNERLEN+1] = True
     
-
-# Function to add the timing strip to a given QE-code matrix
-def add_timing(qrmat):
-    qrmat[CORNERLEN-1, CORNERLEN+1:-(CORNERLEN+1):2] = True   # Horizontal
-    qrmat[CORNERLEN+1:-(CORNERLEN+1):2, CORNERLEN-1] = True   # Vertical 
+    # Add the timing strips
+    qrmat[CORNERLEN-1, CORNERLEN+1:-(CORNERLEN+1):2] = True   # Horizontal timing strip
+    qrmat[CORNERLEN+1:-(CORNERLEN+1):2, CORNERLEN-1] = True   # Vertical timing strip 
 
 
 # Function to initialize the mask for the non-data regions of the QR-code matrix
@@ -64,14 +62,20 @@ def add_alignment(qrmat,mask,version,qrsize):
     # Compute the distance between the centers of the alignment patterns (counted from the right) 
     dist = np.ceil(0.5 * ( int(np.ceil((4*(version+1)/n_algn - 0.5) )))) 
 
+
     # Initialize the list of centers of the alignment patterns
     loc_list = np.zeros(n_algn+1, dtype=int)
     loc_list[0] = CORNERLEN-1
+    
+    # print("Distance between alignment blocks = ",dist)
+    # print("Size = ",qrsize, "  Corner size = ",CORNERLEN)
 
     # Compute the centers of the alignment patterns (starting from the rightmost end)
     for i in range(n_algn):
-        loc_list[-i-1] = qrsize - CORNERLEN - 2*round(i*dist) 
-    
+        loc_list[-i-1] = qrsize - CORNERLEN - 2*round(i*dist)
+
+    # print("Allowed locations = ",loc_list)
+
     # Initialize the list of coordinates of the centers of the alignment patterns
     n_locs = (n_algn+1)**2 - 3     # Excluding three that overlap with the corner patterns
     coord_list = np.zeros((n_locs, 2), dtype=int)
@@ -209,8 +213,7 @@ def initialize(version):
     fmask = np.full((size, size), True, dtype=bool)
 
     # Add the corner blocks and timing strip to the QR-code matrix
-    add_corner(qrmat) 
-    add_timing(qrmat) 
+    add_corner_and_timing(qrmat) 
 
     # Initialize the functional regions mask 
     init_fmask(fmask,version)
