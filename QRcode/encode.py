@@ -1,7 +1,5 @@
 import numpy as np 
 from .general import int_to_bool
-from .errcorrection import append_data_ecbits
-from .populate import add_data
 
 # Standard boolean strings to pad the data
 PADDING = np.bool_([
@@ -150,75 +148,4 @@ def encode_binary(data_arr, datastr, ind):
         ind += 8
 
     return ind
-
-
-# def gen_datastr(data_arr, datastr, dtype, ind):
-#     if dtype == 0:  # Numeric data
-#         ind = encode_numeric(data_arr, datastr, ind)
-#         if ind == -1:
-#             return -1
-
-
-#     elif dtype == 1:  # Alphanumeric data
-#         datastr = datastr.upper()
-#         ind = encode_alphanumeric(data_arr, datastr, ind)
-#         if ind == -1:
-#             return -1
-
-#     elif dtype == 2:  # Byte data
-#         print("Enoding byte data...")
-#         # ind = encode_binary(data_arr, datastr, ind)
-#         # print("Final index = ", ind)
-
-#     return ind
-
-
-# def encode_data(qrmat, fmask, data, dtype, version, errlvl, max_bits): 
-#     # Length of the message. This might be more complicated
-
-#     # Compute the number of data bits that can be encoded
-#     data_bits = compute_max_datalen(version, errlvl)
-    
-#     # Compute the number of characters 
-#     datalen = len(data)
-
-#     if dtype == 2 and datalen*8 > data_bits:
-#         print("Data too long for the given version and error correction level!")
-#         return 
-
-#     print("Data length (bits) = ", datalen*8, " => Max data length = ", data_bits)
-
-#     data_arr = np.zeros(max_bits, dtype=bool) 
-
-#     dcode_bits = 4 
-#     datalen_bits = compute_lenbits(version, dtype)
-#     head_bits = dcode_bits + datalen_bits 
-
-#     # Set the first four bits to data type 
-#     data_arr[0:dcode_bits] = gen_dtypestr(dtype)
-
-#     # Set the next 8 bits to the length of the text message
-#     data_arr[dcode_bits:head_bits] = int_to_bool(datalen, datalen_bits)
-
-#     # Set the remaining bits to a representation of the data based on the data type
-#     # This function returns the final index of the data array
-#     ind = gen_datastr(data_arr, data, dtype, head_bits) 
-
-#     # print("Index = ", ind, ", padding to ", data_bits)
-#     if ind < 0:
-#         return 
-    
-#     # Pad to msg_bits 
-#     pad_arr(data_arr, ind, data_bits)
-
-#     # Add error correction bits 
-#     n_ecblocks = (max_bits - data_bits) // 8
-#     append_data_ecbits(data_arr, dtype, errlvl, version, data_bits, n_ecblocks)
-
-#     # print(np.uint8(data_arr))
-
-#     # Add to the QR code matrix 
-#     add_data(qrmat, version, fmask, data_arr)
-
-#     return data_arr
 
