@@ -1,8 +1,10 @@
 # QR code generator
 
 This repository contains a simple implementation of the model-2 [QR-code standard](https://en.wikipedia.org/wiki/QR_code).  An example script to generate a QR-code corresponding to a given text string is provided in `example.py`, running which should output a png file with a QR-code linking to this page:
-![QR-code to this page](./qrcode.png)
 
+<img src="./qrcode.png" alt="QR code" width="400">
+
+## Description
 A QR-code is described by the following three parameters: 
 
   - **Version**: This is an integer between 1 and 40 that determines the number of bits (called "modules") in the QR-code. A version $v$ QR-code is a $NxN$ rectangle with $N = 4v+17$.
