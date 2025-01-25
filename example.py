@@ -1,21 +1,17 @@
 from QRcode import QRcode 
 
-#  Initialize the QR-code parameters 
-version = 2
-datatype = 2           # Datatypes: 0=Numeric, 1=Alphanumeric, 2=Binary
-err_level = 'M'       # Error correction level (L, M, Q, H)
-
 # Message to be encoded
-msg = "http://www.google.com"
+msg = "https://github.com/vdwivedi190/qrcode"
 
-#  Initialize the QR-code object 
-qrobj = QRcode(version, datatype, err_level)
+qrobj = QRcode(msg)
+# We can alternatively initialize the QR-code object with the version, datatype, and error correction level
+# qrobj = QRcode(msg, version=3, dtype=2, errcode='M')
 
-# Encode the message
-qrobj.encode(msg) 
+# Display the QR-code 
+# qrobj.display()
+
+# Export the QR-code as an image file 
+qrobj.export("qrcode.png")
 
 # Print the details of the QR-code
 qrobj.print_stats()
-
-# Display the QR-code
-qrobj.display()

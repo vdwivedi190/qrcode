@@ -1,7 +1,19 @@
 import numpy as np 
-from .general import find_start
 
-GALOIS_GEN = 285   # Generator polynomial for the Galois field GF(2^8)
+"""
+This modules contains functions to perform arithmetic operations in the Galois field
+GF(2) and GF(2^8). These operations are used in the Reed-Solomon error correction 
+algorithm in the QR code standard. 
+
+"""
+# Generator for the Galois field GF(2^8). The bits in the binary representation of 285 
+# are interpreted as the coefficients of the polynomial over GF(2)
+GALOIS_GEN = 285   
+
+
+
+# GENERATING THE LOG AND ANTILOG TABLES
+# =============================================
 
 # Function to generate the log and antilog tables for the Galois field GF(2^8)
 def gen_GF_log_tables():
@@ -14,7 +26,9 @@ def gen_GF_log_tables():
     for i in range(1,255):
         num *= 2
         if num > 255:
-            num ^= GALOIS_GEN  # XOR with the generator polynomial
+            # Bitwise XOR with the generator polynomial
+            # This ensures that num remains in the Galois field
+            num ^= GALOIS_GEN  
         GF_antilogs[i] = num
 
     # Invert the dictionary to get the logs 
@@ -22,6 +36,13 @@ def gen_GF_log_tables():
 
     return GF_logs, GF_antilogs
 
+# Generate the log and antilog tables for the Galois field GF(2^8)
+GF_logs, GF_antilogs = gen_GF_log_tables()
+
+
+
+# ARITHEMETIC OPERATIONS IN GF(2^8)
+# =============================================
 
 # Multiplication of two values in the Galois field GF(2^8) using precomputed log tables
 def GF_mult(x, y):
@@ -38,8 +59,7 @@ def GF_div(x, y):
     elif y == 0:    
         return None
     else:
-        return GF_antilogs[(GF_logs[x] - GF_logs[y]) % 255]
-    
+        return GF_antilogs[(GF_logs[x] - GF_logs[y]) % 255]    
     
 
 # Multiplication of two polynomials in the Galois field GF(2^8) using precomputed log tables
@@ -60,6 +80,7 @@ def GF_mult_poly(p1, p2):
     
 
 
+# Division of two polynomials in the Galois field GF(2^8) using precomputed log tables
 def GF_div_poly(p1, p2):
     # Compute the lengths of the given polynomials and the product 
     nterms1 = len(p1)
@@ -86,6 +107,11 @@ def GF_div_poly(p1, p2):
     return ptmp[-nterms2+1:]
 
 
+
+
+# COMPUTING THE ERROR CORRECTION BITS
+# =============================================
+
 # Construct the polynomial for error correction of the data string 
 def construct_ec_poly(nblocks):
     poly = [1,1]
@@ -93,27 +119,38 @@ def construct_ec_poly(nblocks):
         poly = GF_mult_poly(poly, [1,GF_antilogs[i]])
     return poly
 
-# Compute the error correction bits for the array
-def append_ecbits(arr, poly):
-    nbits = len(arr)
-    npoly = len(poly)
 
-    tmparr = arr.copy()
-    padded_poly = np.zeros(nbits, dtype=bool)
-    padded_poly[:npoly] = poly
-
-    start = find_start(tmparr)
-    tmplen = nbits - start
-
-    while tmplen > npoly:
-        np.logical_xor(tmparr[start:], padded_poly[:tmplen], out=tmparr[start:])
-        start = find_start(tmparr)
-        tmplen = nbits - start
-
-    start = nbits - npoly + 1 
-    arr[start:] = tmparr[start:]
+# function to find first True in a boolean array
+def find_start(arr):
+    for i in range(len(arr)):
+        if arr[i]:
+            return i
+    return len(arr)
 
 
+# Compute the error correction bits for a boolean array
+def compute_ecbits(msg_coeffs, ec_coeffs):
+    msg_len = len(msg_coeffs)
+    ec_len = len(ec_coeffs)
+    total_len = msg_len + ec_len - 1
 
-# Generate the log and antilog tables for the Galois field GF(2^8)
-GF_logs, GF_antilogs = gen_GF_log_tables()
+    tmp_coeffs = np.zeros(total_len, dtype=bool)
+    tmp_coeffs[:msg_len] = msg_coeffs
+
+    start = find_start(tmp_coeffs)
+    while start + ec_len <= total_len:
+        np.logical_xor(tmp_coeffs[start:start+ec_len], ec_coeffs, out=tmp_coeffs[start:start+ec_len])
+        start = find_start(tmp_coeffs)
+
+    return tmp_coeffs[-ec_len+1:]
+
+
+# Compute the error correction bytes for an integer array
+# (equivalent to an array with elements in GF(2^8))
+def compute_ecbytes(msg_coeffs, ec_coeffs):
+    msg_len = len(msg_coeffs)
+    ec_len = len(ec_coeffs)
+    tmp_coeffs = np.zeros(msg_len + ec_len - 1, dtype=int)
+    tmp_coeffs[:msg_len] = msg_coeffs
+    return GF_div_poly(tmp_coeffs, ec_coeffs)[-len(ec_coeffs):]
+
