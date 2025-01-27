@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 
 from .QRmatrix import QRmatrix
 from .QRdata import QRdata, DATASPEC_FILE
-# from .general import int_to_bool, binary_to_int, int_to_binary, pad_alternating
-# from .galois import GF_div_poly, construct_ec_poly, append_ecbits
-
 
 class QRcode:
     MAX_VERSION = 40
@@ -22,44 +19,42 @@ class QRcode:
     # Default encoding = binary 
     # Default error correction level = M
     # If a version number is not provided, then it is computed based on the length of the message
-    def __init__(self, msg, version=0, dtype=2, errcode='M'):
+    def __init__(self, msg, version=None, dtype=2, errcode='M'):
         # Check if the QR code has been generated (Useful for the display/export functions)
-        self.gen_flag = False 
-
         self.msg = msg
         self.msglen = len(msg)
 
-        if type(version) == int and 0 <= version <= self.MAX_VERSION:
-            self.version = version 
+        if type(dtype) != int:
+            raise TypeError("Data type must be an integer!")            
+        elif dtype not in [0,1,2]:
+            raise ValueError("Invalid data type!")
         else:
-            print("Invalid version number. Aborting...")
-            return
+            self.dtype = dtype
 
-        if type(dtype) == int and 0 <= dtype <= 3:
-            self.dtype = dtype  
+        if errcode not in ['L', 'M', 'Q', 'H']:
+            raise ValueError("The valid error correction levels are 'L', 'M', 'Q', and 'H'!")
         else:
-            print("Invalid data type. Aborting...")
-            return
-        
-        if type(errcode) == str and errcode in ['L','M','Q','H']:
             self.errlvl = self.EC_LEVEL_CODE[errcode]
+
+        if version == None:
+            self.version = self.lookup_datasize()
+        elif type(version) != int:
+            raise TypeError("The version must be an integer!")    
+        elif version < 1 or version > self.MAX_VERSION:
+            raise ValueError("The version must be an integer between 1 and" + str(self.MAX_VERSION) + "!")
         else:
-            print("Invalid error correction level. Aborting...")
-            return
+            self.version = version
 
+
+    def generate(self):
         if self.msglen > self.MAX_CAPACITY[self.dtype]:
-            print("Message too long for the given data type. Aborting...")
-            return
+            raise ValueError("Message too long for the given data type!")
 
-        if self.version == 0:
-            self.version = self.lookup_datasize() 
-    
         self.data_obj = QRdata(self.version, self.dtype, self.errlvl)
 
         # Check if the message is too long for the given version
         if self.data_obj.num_msgbytes < self.msglen:
-            print("Message too long for the given version. Aborting...")
-            return
+            raise ValueError("Message too long for the given data type!")
         
         self.data_obj.encode(self.msg)
         self.data = self.data_obj.data
@@ -70,9 +65,8 @@ class QRcode:
         # Add to the QR code matrix 
         self.qr_obj.add_data(self.data_obj.data)
         self.qr_obj.pattern_mask()
-        self.gen_flag = True 
 
-        return 
+        self.qrmat = self.qr_obj.mat
 
 
     def lookup_datasize(self):
@@ -102,21 +96,20 @@ class QRcode:
     # =================================================================
 
     def __str__(self):
-        if not self.gen_flag:
+        if not hasattr(self, 'qrmat'):
             return "QR code not generated!"
         return "Encoded message = " + self.msg
     
     
     # Function to display the QR-code as an image 
     def display(self):
-        if not self.gen_flag:
-            print("Cannot display the QR code!")
-            return
-        
+        if not hasattr(self, 'qrmat'):
+            self.generate()
+            
         fig, ax = plt.subplots(1, 1, figsize=(14, 6))
         ax.axis('off')
         fig.subplots_adjust(left=0.25, right=0.75, top=0.75, bottom=0.25)
-        qr_image = Image.fromarray(np.uint8(~self.qr_obj.mat) * 255)
+        qr_image = Image.fromarray(np.uint8(~self.qrmat) * 255)
 
         # Pad the image with whitespace
         padding = 6
@@ -130,11 +123,10 @@ class QRcode:
     # Function to export the QR-code as an image 
     # The parameter fact determines the size of each module in pixels 
     def export(self, filename, scale=20):
-        if not self.gen_flag:
-            print("Cannot export the QR code!")
-            return
+        if not hasattr(self, 'qrmat'):
+            self.generate()
         
-        qr_image = Image.fromarray(np.uint8(~self.qr_obj.mat) * 255)
+        qr_image = Image.fromarray(np.uint8(~self.qrmat) * 255)
 
         # Scale the image by a factor of fact
         qr_image = qr_image.resize((qr_image.size[0] * scale, qr_image.size[1] * scale), Image.NEAREST)
@@ -150,9 +142,8 @@ class QRcode:
 
     # Function to print various stats about the QR code
     def print_stats(self): 
-        if not self.gen_flag:
-            print("No stats to display!")
-            return
+        if not hasattr(self, 'qrmat'):
+            self.generate()
         
         print("QR Code:")
         print("  Version =", self.version)
@@ -167,8 +158,6 @@ class QRcode:
         print("  Data length =", self.data_obj.num_databytes, "bytes =", 8*self.data_obj.num_databytes, "modules")
         print("  Allowed message length =", self.data_obj.num_msgbytes, "bytes =", 8*self.data_obj.num_msgbytes, "modules")
         print("  Length of encoded message =", self.msglen, "bytes")
-        # print("  Number of error correction words =", self.num_databytes - self.num_msgbytes)
-        # print("  Remainder = ", self.num_rembits, "modules")
         print()
         print("  Encoded using pattern mask number", self.qr_obj.masknum)
 
