@@ -3,10 +3,9 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from .QRmatrix import QRmatrix
-from .QRdata import QRdata
+from .QRdata import QRdata, MAX_VERSION
 
 class QRcode:
-    MAX_VERSION = 40
         
     DATATYPE_ID = {0:'Numeric', 1:'Alphanumeric', 2:'Binary'}    
     MAX_CAPACITY = {0:7089, 1:4296, 2:2953}
@@ -40,8 +39,8 @@ class QRcode:
             self.version = None
         elif type(version) != int:
             raise TypeError(f"{version} is not a valid version number; integer expected!")
-        elif version < 1 or version > self.MAX_VERSION:
-            raise ValueError(f"The version must be an integer between 1 and {self.MAX_VERSION}!")
+        elif version < 1 or version > MAX_VERSION:
+            raise ValueError(f"The version must be an integer between 1 and {MAX_VERSION}!")
         else:
             self.version = version
 

@@ -3,6 +3,9 @@ import numpy as np
 from .utils import int_to_bool, binary_to_int
 from .galois import construct_ec_poly, compute_ecbytes
 
+# Maximum version number for the QR code
+MAX_VERSION = 40
+
 # Path to the file containing the data specifications for the QR code
 DATASPEC_FILE = "qrgen/dataspec.txt"
 
@@ -39,6 +42,8 @@ class QRdata:
         self.version = version
         self.dtype = dtype
         self.errlvl = errlvl
+
+        self.dataspec = parse_dataspec(DATASPEC_FILE)
 
 
     # Function to generate the data string (including error correction bits) for the QR-code
@@ -102,67 +107,33 @@ class QRdata:
     # FUNCTIONS FOR LOOKING UP THE DATA ENCODING SPECIFICATIONS
     # =================================================================
         
-    # Function to look up the specification for data storage from a text file
+    # Function to parse the data specification 
     def lookup_dataspec(self) -> tuple[int]:
-        # Line number in the file 
-        line_num = 4*(self.version-1) + self.errlvl + 1
+        try:
+            spec = self.dataspec[(self.version, self.errlvl)]
+        except:
+            raise ValueError(f"Data specification not found for version {self.version} and error correction level {self.errlvl}!")
         
-        # Initialize an array to store the data specification
-        dataspec = np.zeros(LINE_LEN, dtype=int)
-
-        with open(DATASPEC_FILE, "r") as file:
-            for i in range(1,line_num):
-                next(file)
-            tmpstr = file.readline()
-    
-        strlist = tmpstr.strip().split('\t') 
-        num_str = len(strlist)
-        for i in range(num_str):
-            dataspec[i] = int(strlist[i])
-
-        """
-        The format of the data specification file is as follows:
-            The first two integers in each line are the version and error correction level.
-            The third integer denotes the maximum allowed number of message byts. 
-            The fourth integer is the number of error correction bytes per block.
-            The next two integets are the number of blocks of type 1 and the number of message bytes per block.
-            The next two integers are the corresponding quantities for blocks of type 2 (if applicable)
-        """ 
-
-        # Parse individual elements of the data specification
-        num_msgbytes = dataspec[2]        
-        num_blocks = (dataspec[4],dataspec[6])
-        msgbytes_per_block = (dataspec[5],dataspec[7])
-        ecbytes_per_block = dataspec[3]        
+        num_msgbytes = spec[0]
+        ecbytes_per_block = spec[1]        
+        num_blocks = (spec[2],spec[4])
+        msgbytes_per_block = (spec[3],spec[5])
 
         return num_msgbytes, num_blocks, ecbytes_per_block, msgbytes_per_block
 
 
+    # Function to compute the optimal version given the message length and error correction level
     def compute_version(self) -> int:
-        optimal_version = -1
+        for ver in range(1,MAX_VERSION):
+            try:
+                spec = self.dataspec[(ver, self.errlvl)]
+            except:
+                continue 
+            if spec[0] >= self.msglen:
+                return ver
+        raise ValueError(f"Message too long for any version of the QR code with error correction level {self.errlvl}!")
         
-        with open(DATASPEC_FILE, "r") as file:
-            # Start from the first line of the file with the desired error correction level
-            starting_line = self.errlvl
-            for j in range(1,starting_line):
-                next(file)  
-                
-            # for i in range(1,self.MAX_VERSION,4):
-            while True:
-                line = file.readline()
-                strlist = line.strip().split('\t') 
-                if int(strlist[2]) >= self.msglen:
-                    optimal_version = int(strlist[0])
-                    break
-
-                # Skip 4 lines to arrive at the next version with the same error correction level
-                for j in range(1,4):
-                    next(file)  
-
-        self.optimal_version = optimal_version
-        return optimal_version
-
-
+    
     # Function to compute the number of bits for the data length
     # (based on the QR version and data type)
     def compute_msglen_bits(self) -> int:
@@ -406,3 +377,35 @@ def alphanum(char:chr) -> int:
         case _:
             raise ValueError(f"The character {char} cannot be encoded in the alphanumeric mode!")
         
+
+def parse_dataspec(filename:str) -> dict[tuple[int], list[int]]:
+    """
+    Parses the data specification stored in the file with the given filename.
+    Returns a dictionary with the version and error correction level as keys and the corresponding
+    data specification as values.
+
+    The format of the data specification file is as follows:
+        The first two integers in each line are the version and error correction level.
+        The third integer denotes the maximum allowed number of message bytes. 
+        The fourth integer is the number of error correction bytes per block.
+        The next two integets are the number of blocks of type 1 and the number of message bytes per block.
+        The next two integers are the corresponding quantities for blocks of type 2 (if applicable)
+    """ 
+
+    dataspec = {}
+    with open(filename, "r") as file:
+        for line in file:
+            # Initialize an array to store the data specification
+            strlist = line.strip().split('\t') 
+            num_str = len(strlist)
+            if num_str < 6:
+                continue
+
+            tmplist = np.zeros(LINE_LEN, dtype=int)        
+            for i in range(num_str):
+                tmplist[i] = int(strlist[i])
+
+            version = tmplist[0]
+            errlvl = tmplist[1]
+            dataspec[(version,errlvl)] = tmplist[2:]
+    return dataspec

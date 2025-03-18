@@ -18,8 +18,8 @@ def init_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enc", metavar="ENCODING", type=int, default=2, 
         help="Data type to encode the given string with (0/1/2 for numeric/alphanumeric/binary, default = binary)"
     )
-    parser.add_argument("--ecl", metavar="EC_LEVEL", type=str, default='Q', 
-        help="Error correction level (L/M/Q/H, default=Q)"
+    parser.add_argument("--ecl", metavar="EC_LEVEL", type=str, default='M', 
+        help="Error correction level (L/M/Q/H, default=M)"
     )
     parser.add_argument("--out", metavar="FILENAME", 
         help="Output image file (default extension = png)"
