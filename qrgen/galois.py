@@ -16,7 +16,7 @@ GALOIS_GEN = 285
 # =============================================
 
 # Function to generate the log and antilog tables for the Galois field GF(2^8)
-def gen_GF_log_tables():
+def gen_GF_log_tables() -> tuple[list[int], list[int]]:
     # Initialize a dictionary to store the antilogs as n:2^n for n in 0,1,...,254
     GF_antilogs = {}
     
@@ -45,7 +45,7 @@ GF_logs, GF_antilogs = gen_GF_log_tables()
 # =============================================
 
 # Multiplication of two values in the Galois field GF(2^8) using precomputed log tables
-def GF_mult(x, y):
+def GF_mult(x:int, y:int) -> int:
     if x == 0 or y == 0:
         return 0
     else:
@@ -53,7 +53,7 @@ def GF_mult(x, y):
     
 
 # Division of two values in the Galois field GF(2^8) using precomputed log tables
-def GF_div(x, y):
+def GF_div(x:int, y:int) -> int:
     if x == 0:
         return 0
     elif y == 0:    
@@ -63,7 +63,7 @@ def GF_div(x, y):
     
 
 # Multiplication of two polynomials in the Galois field GF(2^8) using precomputed log tables
-def GF_mult_poly(p1, p2):
+def GF_mult_poly(p1:list[int], p2:list[int]) -> list[int]:
     # Compute the lengths of the given polynomials and the product 
     nterms1 = len(p1)
     nterms2 = len(p2)
@@ -81,7 +81,7 @@ def GF_mult_poly(p1, p2):
 
 
 # Division of two polynomials in the Galois field GF(2^8) using precomputed log tables
-def GF_div_poly(p1, p2):
+def GF_div_poly(p1:list[int], p2:list[int]) -> list[int]:
     # Compute the lengths of the given polynomials and the product 
     nterms1 = len(p1)
     nterms2 = len(p2)
@@ -108,12 +108,11 @@ def GF_div_poly(p1, p2):
 
 
 
-
 # COMPUTING THE ERROR CORRECTION BITS
 # =============================================
 
 # Construct the polynomial for error correction of the data string 
-def construct_ec_poly(nblocks):
+def construct_ec_poly(nblocks:int) -> list[int]:
     poly = [1,1]
     for i in range(1, nblocks):
         poly = GF_mult_poly(poly, [1,GF_antilogs[i]])
@@ -121,15 +120,25 @@ def construct_ec_poly(nblocks):
 
 
 # function to find first True in a boolean array
-def find_start(arr):
+def find_start(arr:list[bool]) -> int:
     for i in range(len(arr)):
         if arr[i]:
             return i
     return len(arr)
 
 
+# Compute the error correction bytes for an integer array
+# (equivalent to an array with elements in GF(2^8))
+def compute_ecbytes(msg_coeffs, ec_coeffs):
+    msg_len = len(msg_coeffs)
+    ec_len = len(ec_coeffs)
+    tmp_coeffs = np.zeros(msg_len + ec_len - 1, dtype=int)
+    tmp_coeffs[:msg_len] = msg_coeffs
+    return GF_div_poly(tmp_coeffs, ec_coeffs)[-len(ec_coeffs):]
+
+
 # Compute the error correction bits for a boolean array
-def compute_ecbits(msg_coeffs, ec_coeffs):
+def compute_ecbits(msg_coeffs:list[bool], ec_coeffs:list[bool]) -> list[bool]:
     msg_len = len(msg_coeffs)
     ec_len = len(ec_coeffs)
     total_len = msg_len + ec_len - 1
@@ -143,14 +152,3 @@ def compute_ecbits(msg_coeffs, ec_coeffs):
         start = find_start(tmp_coeffs)
 
     return tmp_coeffs[-ec_len+1:]
-
-
-# Compute the error correction bytes for an integer array
-# (equivalent to an array with elements in GF(2^8))
-def compute_ecbytes(msg_coeffs, ec_coeffs):
-    msg_len = len(msg_coeffs)
-    ec_len = len(ec_coeffs)
-    tmp_coeffs = np.zeros(msg_len + ec_len - 1, dtype=int)
-    tmp_coeffs[:msg_len] = msg_coeffs
-    return GF_div_poly(tmp_coeffs, ec_coeffs)[-len(ec_coeffs):]
-

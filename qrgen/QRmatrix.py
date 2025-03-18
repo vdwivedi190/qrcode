@@ -1,6 +1,6 @@
 import numpy as np 
 
-from .general import int_to_bool
+from .utils import int_to_bool
 from .galois import compute_ecbits
 from .pattern_mask import eval_qrmat, gen_pmasks
 
@@ -28,7 +28,7 @@ class QRmatrix:
     
 
     # =================================================================
-    def __init__(self, version, errlvl):
+    def __init__(self, version:int, errlvl:int):
         self.version = version
         self.errlvl = errlvl
 
@@ -42,16 +42,16 @@ class QRmatrix:
         self.fmask = np.full((self.size, self.size), True, dtype=bool)        
         
         # Add the corner and timing blocks
-        self.num_func_bits += self.add_corner_and_timing() 
+        self.num_func_bits += self._add_corner_and_timing() 
 
         # Alignment modules are required only for versions > 1
         if self.version > 1:
-            self.num_func_bits += self.add_alignment_blocks() 
+            self.num_func_bits += self._add_alignment_blocks() 
 
         # Add the version info block if required 
         if self.version >= 7:   
             ver_arr = self.gen_version_arr()      
-            self.add_version_info(ver_arr)
+            self._add_version_info(ver_arr)
 
         # The format strip is added at the very end (since it contains the mask number)
         # Thus remove the number of bits added by the format strip "by hand"
@@ -62,7 +62,7 @@ class QRmatrix:
 
         
     # Function to generate the format string for a given error correction level and mask number
-    def gen_format_arr(self, masknum):
+    def gen_format_arr(self, masknum:int) -> np.ndarray:
         # Initialize the format string
         fmt_arr = np.zeros(2*self.CORNER_SIZE+1, dtype=bool)   
 
@@ -93,7 +93,7 @@ class QRmatrix:
 
     # Function to add the corner blocks to a given QR-code matrix
     # Returns the total number of modules occupied by the corner and timing blocks
-    def add_corner_and_timing(self):
+    def _add_corner_and_timing(self) -> int:
         # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
         crn_sz = self.CORNER_SIZE
         
@@ -134,7 +134,7 @@ class QRmatrix:
         
     # Function to add the alignment blocks 
     # Returns the total number of modules occupied by the alignment blocks
-    def add_alignment_blocks(self):               
+    def _add_alignment_blocks(self) -> int:               
         # Define these local variables to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
         crn_sz = self.CORNER_SIZE
         blk_sz = self.ALIGNMENT_BLOCKSIZE
@@ -198,7 +198,7 @@ class QRmatrix:
     # Function to add the version information to the bottom-left and top-right
     # corners of the QR-code (only relevant for versions 7 and above)
     # Returns the total number of modules occupied by the version blocks
-    def add_version_info(self, ver_arr):   
+    def _add_version_info(self, ver_arr:np.ndarray) -> int:   
         # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
         crn_sz = self.CORNER_SIZE
 
@@ -221,7 +221,7 @@ class QRmatrix:
 
     # Function to place the format string in the QR-code matrix
     # Returns the total number of modules occupied by the format strip
-    def add_format_info(self, fmt_arr): 
+    def _add_format_info(self, fmt_arr:np.ndarray) -> int: 
         # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
         crn_sz = self.CORNER_SIZE
         
@@ -243,7 +243,7 @@ class QRmatrix:
     # =================================================================
 
     # Function to add the data (given as a boolean array) to the QR-code matrix
-    def add_data(self, data):
+    def add_data(self, data:np.ndarray) -> None:
         # Starting position (at the bottom-right corner of the matrix)
         # The position is given as [row, column], equivalent to [y, x] in Cartesian coordinates 
         # The top-left corner is at pos = [0,0]
@@ -303,7 +303,7 @@ class QRmatrix:
     # =================================================================
 
     # Function to add the optimal pattern mask to the QR-code matrix
-    def pattern_mask(self):
+    def pattern_mask(self) -> None:
         # Initialize the max_penalty to something large
         max_penalty = 100000
         best_mask_num = -1
@@ -314,7 +314,7 @@ class QRmatrix:
         for masknum in range(0, 8):
             # Add the format information array for the current mask number
             fmt_arr = self.gen_format_arr(masknum)
-            self.add_format_info(fmt_arr)
+            self._add_format_info(fmt_arr)
 
             # Copy the current QR code matrix
             cur_qrmat = self.mat.copy()
