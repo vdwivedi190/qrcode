@@ -16,7 +16,7 @@ The module can be used either by importing it or invoked directly from the termi
 ### Importing the module 
 The module provides a class `QRcode`, which can be imported as 
 ```
-from QRcode import QRcode
+from qrgen import QRcode
 ```
 An object of this class can be created most simply by providing a message string as 
 ```
