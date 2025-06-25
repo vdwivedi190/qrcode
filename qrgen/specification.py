@@ -30,7 +30,9 @@ class QRspec:
         try:
             self.validate()
         except ValueError as e:
-            raise ValueError(f"Error parsing spec obtained from {_DATASPEC_FILE}") from e
+            raise ValueError(
+                f"Error parsing spec obtained from {_DATASPEC_FILE}"
+            ) from e
 
     def __repr__(self) -> str:
         return (
@@ -71,6 +73,11 @@ class QRspec:
         """Returns the length of the data in bits."""
         return self.datalen_in_bytes * 8
 
+    @property
+    def capacity_in_bytes(self) -> int:
+        """Returns the total capacity of the QR code in bytes."""
+        return self._datalen + self._EC_bytes_per_block * sum(self._num_blocks)
+    
     @property
     def num_blocks(self) -> list[int]:
         """Returns the number of blocks of each type in the QR code."""
@@ -148,7 +155,7 @@ def lookup_data_spec(filename: str):
 
 def _compute_encoded_len(msglen: int, enc: int) -> int:
     """Computes the number of bits needed to encode the message length."""
-    
+
     match enc:
         case 0:  # Numeric encoding
             msg_bits = 10 * (msglen // 3)
@@ -198,7 +205,7 @@ def compute_msglen_bits(version: int, dtype: int) -> int:
 
 def _get_optimal_version(datalen: int, EC_level: int) -> int:
     """Returns the optimal version for the given data length and error correction level."""
-    for version in range(1, MAX_VERSION+1):
+    for version in range(1, MAX_VERSION + 1):
         if (version, EC_level) in QR_SPEC_DICT:
             spec = QR_SPEC_DICT[(version, EC_level)]
             if spec.datalen_in_bits >= datalen:
@@ -210,7 +217,7 @@ def _get_optimal_version(datalen: int, EC_level: int) -> int:
 
 def _get_optimal_EC_level(datalen: int, version: int) -> int:
     """Returns the optimal error correction level for a given data length and version."""
-    for EC_level in [2,3,0,1]: # Check in order of decreasing error correction level
+    for EC_level in [2, 3, 0, 1]:  # Check in order of decreasing error correction level
         if (version, EC_level) in QR_SPEC_DICT:
             spec = QR_SPEC_DICT[(version, EC_level)]
             if spec.datalen_in_bits >= datalen:
@@ -220,7 +227,9 @@ def _get_optimal_EC_level(datalen: int, version: int) -> int:
     )
 
 
-def get_optimal_spec(msglen: int, version:int|None, EC_level: int|None, enc: int) -> QRspec:
+def get_optimal_spec(
+    msglen: int, version: int | None, EC_level: int | None, enc: int
+) -> QRspec:
     """Returns the optimal spec and the corresponding QRspec for the given message length."""
     max_header_len = 16
     encoded_msg_len = _compute_encoded_len(msglen, enc)
@@ -228,24 +237,31 @@ def get_optimal_spec(msglen: int, version:int|None, EC_level: int|None, enc: int
 
     if version is None:
         if EC_level is None:
+            logger.warning(
+                "No version or error correction level specified. Using error correction level Q"
+            )
             EC_level = 3  # Default to Q
-        version = _get_optimal_version(max_datalen, _get_optimal_version(max_datalen, EC_level))
+        version = _get_optimal_version(
+            max_datalen, _get_optimal_version(max_datalen, EC_level)
+        )
+        logger.info(f"No version specified. Found {version=} as the optimal version.")
         return QR_SPEC_DICT[(version, EC_level)]
-    
+
     elif 1 <= version <= MAX_VERSION:
         if EC_level is None:
             EC_level = _get_optimal_EC_level(max_datalen, version)
-            return QR_SPEC_DICT[(version, EC_level)]    
+            logger.info(f"No error correction level specified. Found {EC_level=} as the optimal level.")            
+            return QR_SPEC_DICT[(version, EC_level)]
         else:
             spec = QR_SPEC_DICT[(version, EC_level)]
             if spec.datalen_in_bits >= max_datalen:
+                logger.info("The specified version and error correction level are sufficient.") 
                 return spec
             else:
                 raise ValueError(
                     f"QR code specification for version {version} and error correction level {EC_level} "
                     f"cannot accommodate a message of length {msglen} with data type {enc}."
                 )
-
 
 
 QR_SPEC_DICT = lookup_data_spec(_DATASPEC_FILE)

@@ -46,22 +46,20 @@ class QRcode:
     ):
         logging.info("Initializing QRcode object...")
 
-        
         try:
             _validate_inputs(version, encoding, errcode)
         except (ValueError, TypeError, NotImplementedError) as e:
             logging.error(f"Invalid input: {e}")
             raise e
-        
-        self.msg = msg        
+
+        self.msg = msg
         self.encoding = encoding
         EC_level = self.EC_LEVEL_CODE[errcode]
         self._spec: QRspec = get_optimal_spec(len(msg), version, EC_level, encoding)
 
-
     def generate(self) -> None:
         """Generates the QR code based on the provided message and specifications."""
-        
+
         logging.info("Generating QR code.")
         data = encode(spec=self._spec, msg=self.msg, dtype=self.encoding)
         data_blocks = split_data_in_blocks(data, spec=self._spec)
@@ -77,7 +75,6 @@ class QRcode:
 
         logging.info("Generating image from matrix.")
         self._create_image()
-        
 
     def _create_image(self) -> None:
         # Generate the QR code image (with white padding)
@@ -92,7 +89,6 @@ class QRcode:
             mode="L", size=(width + 2 * padding, height + 2 * padding), color=255
         )
         self.qrimg.paste(self.tmp_img, (padding, padding))
-
 
     # PRINTING ROUNTINES
     # =================================================================
@@ -161,25 +157,22 @@ class QRcode:
         stats["message_length"] = self.msglen
 
         return stats
-    
+
 
 def _validate_inputs(version, encoding, errcode):
     """Validates the inputs for the QR code generation.
-    
+
     Raises ValueError, TypeError, or NotImplementedError if the inputs are invalid."""
 
     if not isinstance(version, int):
-        raise TypeError(
-            f"{version} is not a valid version number; integer expected!"
-        )
-    
+        raise TypeError(f"{version} is not a valid version number; integer expected!")
+
     if not isinstance(encoding, int):
         raise TypeError(f"{encoding} is not a valid data type; integer expected!")
     elif encoding not in [0, 1, 2]:
         raise ValueError(f"{encoding} is not a valid data type; only 0-3 expected!")
     elif encoding == 3:
         raise NotImplementedError("Kanji mode (Data type 3) not supported!")
-    
 
     if errcode not in ["L", "M", "Q", "H"]:
         raise ValueError(

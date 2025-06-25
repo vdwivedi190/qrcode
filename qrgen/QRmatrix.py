@@ -311,7 +311,6 @@ class QRmatrix:
                 hflag = True
             else:
                 pos = nextpos
-                
 
     # PATTERN MASKING
     # =================================================================

@@ -5,6 +5,7 @@ import argparse
 from .QRcode import QRcode
 from .terminal import print_to_terminal
 
+logger = logging.getLogger(__name__)
 
 def init_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
