@@ -164,7 +164,7 @@ def _validate_inputs(version, encoding, errcode):
 
     Raises ValueError, TypeError, or NotImplementedError if the inputs are invalid."""
 
-    if not isinstance(version, int):
+    if version is not None and not isinstance(version, int):
         raise TypeError(f"{version} is not a valid version number; integer expected!")
 
     if not isinstance(encoding, int):
@@ -174,7 +174,7 @@ def _validate_inputs(version, encoding, errcode):
     elif encoding == 3:
         raise NotImplementedError("Kanji mode (Data type 3) not supported!")
 
-    if errcode not in ["L", "M", "Q", "H"]:
+    if errcode is not None and errcode not in ["L", "M", "Q", "H"]:
         raise ValueError(
             f"{errcode} is not a valid error correction levels! Expected values are 'L', 'M', 'Q', or 'H'!"
         )
