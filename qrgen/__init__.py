@@ -1,1 +1,1 @@
-from .QRcode import QRcode
+from .QRcode import QRcode as QRcode
