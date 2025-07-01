@@ -1,93 +1,49 @@
 import numpy as np
 
-from .utils import int_to_bool
-from .galois import compute_ecbits
+from .spec import QRspec, CORNER_SIZE, ALIGNMENT_BLOCKSIZE
 from .pattern_mask import eval_qrmat, gen_pmasks
 
 
 class QRmatrix:
-    """
+    """Class for generating the QR-code matrix.
+
     This class handles the generation of the QR-code matrix given a boolean array containing the
     data encoded as per the QR-code standard. It places all the functional modules in the QR-code
     matrix and generates and places the version information. Finally, it applies the optimal pattern
     mask to the QR-code matrix.
     """
 
-    # CONSTANTS SPECIFIED IN THE QR-CODE STANDARD
     # =================================================================
-
-    # Sizes of the corner and alignment blocks
-    CORNER_SIZE = 7
-    ALIGNMENT_BLOCKSIZE = 5
-
-    # Boolean arrays for computing the error correction bits
-    FORMAT_POLYNOMIAL = np.bool_([1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1])
-    VERSION_POLYNOMIAL = np.bool_([1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1])
-
-    # Boolean string to mask the format information
-    FORMAT_MASK = np.bool_([1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0])
-
-    # =================================================================
-    def __init__(self, version: int, errlvl: int):
-        self.version = version
-        self.errlvl = errlvl
+    def __init__(self, spec: QRspec):
+        self._spec = spec
 
         # Compute the size of the QR-code matrix as defined in the specifications
-        self.size = 4 * version + 17
+        self.size = 4 * self._spec.version + 17
         self.num_func_bits = 0
 
         # Initialize the QR-code matrix and the mask matrix for the functional regions
         # For the latter, fmask[i,j] == False if the module (i,j) is a functional module
-        self.mat = np.zeros((self.size, self.size), dtype=bool)
+        self.mat = np.full((self.size, self.size), False, dtype=bool)
         self.fmask = np.full((self.size, self.size), True, dtype=bool)
 
         # Add the corner and timing blocks
         self.num_func_bits += self._add_corner_and_timing()
 
         # Alignment modules are required only for versions > 1
-        if self.version > 1:
+        if self._spec.version > 1:
             self.num_func_bits += self._add_alignment_blocks()
 
         # Add the version info block if required
-        if self.version >= 7:
-            ver_arr = self.gen_version_arr()
+        if self._spec.version >= 7:
+            ver_arr = np.array(self._spec.version_to_bool_array())
             self._add_version_info(ver_arr)
 
         # The format strip is added at the very end (since it contains the mask number)
         # Thus remove the number of bits added by the format strip "by hand"
-        self.num_func_bits += 2 * (2 * self.CORNER_SIZE + 1)  # Format strip
+        self.num_func_bits += 2 * (2 * CORNER_SIZE + 1)  # Format strip
 
         # Generate the set of pattern masks for the given size
         self.pmasks = gen_pmasks(self.size)
-
-    # Function to generate the format string for a given error correction level and mask number
-    def gen_format_arr(self, masknum: int) -> np.ndarray:
-        # Initialize the format string
-        fmt_arr = np.zeros(2 * self.CORNER_SIZE + 1, dtype=bool)
-
-        # The first two bits are the error correction level
-        fmt_arr[0:2] = int_to_bool(self.errlvl, 2)
-
-        # The next three bits are the mask pattern number
-        fmt_arr[2:5] = int_to_bool(masknum, 3)
-
-        # Add the error correction bits to the format string and XOR with the mask
-        fmt_arr[5:] = compute_ecbits(fmt_arr[:5], self.FORMAT_POLYNOMIAL)
-        np.logical_xor(fmt_arr, self.FORMAT_MASK, out=fmt_arr)
-        return fmt_arr
-
-    # Function to generate the version string
-    def gen_version_arr(self):
-        ver_arr = np.zeros(3 * (self.CORNER_SIZE - 1), dtype=bool)
-        ver_arr[: self.CORNER_SIZE - 1] = int_to_bool(
-            self.version, self.CORNER_SIZE - 1
-        )
-
-        # Add error correction bits to the version array
-        ver_arr[self.CORNER_SIZE - 1 :] = compute_ecbits(
-            ver_arr[: self.CORNER_SIZE - 1], self.VERSION_POLYNOMIAL
-        )
-        return ver_arr
 
     # PLACMENT OF FUNCTIONAL MODULES
     # =================================================================
@@ -97,9 +53,9 @@ class QRmatrix:
 
         Returns the total number of modules occupied by the corner and timing blocks.
         """
-        # Define these local variables to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
-        crn_sz = self.CORNER_SIZE
-        blk_sz = self.ALIGNMENT_BLOCKSIZE
+        # Define these local variables to avoid the clutter of having to write "CORNER_SIZE" everywhere
+        crn_sz = CORNER_SIZE
+        blk_sz = ALIGNMENT_BLOCKSIZE
 
         #  Define the alignment block of side length BLOCKLEN
         ablock = np.zeros((blk_sz, blk_sz), dtype=bool)
@@ -109,11 +65,14 @@ class QRmatrix:
         ablock[0, :] = True  # Top horizontal line
         ablock[-1, :] = True  # Bottom horizontal line
 
-        nblocks_side = 2 + (self.version // 7)  # Number of alignment patterns per side
+        nblocks_side = 2 + (
+            self._spec.version // 7
+        )  # Number of alignment patterns per side
 
         # Distance between the centers of the alignment patterns (counted from the right)
         dist = np.ceil(
-            0.5 * (int(np.ceil((4 * (self.version + 1) / (nblocks_side - 1) - 0.5))))
+            0.5
+            * (int(np.ceil((4 * (self._spec.version + 1) / (nblocks_side - 1) - 0.5))))
         )
 
         # Initialize the list of possible values for the center coordinates of the alignment patterns
@@ -166,8 +125,8 @@ class QRmatrix:
         Returns the total number of modules occupied by the corner and timing blocks.
         """
 
-        # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
-        crn_sz = self.CORNER_SIZE
+        # Define a local variable to avoid the clutter of having to write "CORNER_SIZE" everywhere
+        crn_sz = CORNER_SIZE
 
         # Define the corner block
         cblock = np.zeros((crn_sz, crn_sz), dtype=bool)
@@ -212,8 +171,8 @@ class QRmatrix:
 
         Returns the total number of modules occupied by the version blocks
         """
-        # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
-        crn_sz = self.CORNER_SIZE
+        # Define a local variable to avoid the clutter of having to write "CORNER_SIZE" everywhere
+        crn_sz = CORNER_SIZE
 
         # Add near the top-right corner
         self.mat[: crn_sz - 1, -crn_sz - 2] = ver_arr[-3::-3]
@@ -236,8 +195,8 @@ class QRmatrix:
 
         Returns the total number of modules occupied by the version blocks
         """
-        # Define a local variable to avoid the clutter of having to write "self.CORNER_SIZE" everywhere
-        crn_sz = self.CORNER_SIZE
+        # Define a local variable to avoid the clutter of having to write "CORNER_SIZE" everywhere
+        crn_sz = CORNER_SIZE
 
         # Add around the top-left corner
         self.mat[crn_sz + 1, : crn_sz - 1] = fmt_arr[: crn_sz - 1]
@@ -272,9 +231,7 @@ class QRmatrix:
         # The top-left corner is at pos = [0,0]
         pos = np.array([self.size - 1, self.size - 1], dtype=int)
 
-        # Movement vectors
-        # v_left = np.array([0,-1])           # Horizontal (along the row) movement vector
-        # v_diag = np.array([-1,1])           # Diagonal movement vector
+        # Vertical movement direction = up
         vdir = -1
 
         # Flag to indicate horizontal movement (True for horizontal, False for diagonal)
@@ -292,7 +249,7 @@ class QRmatrix:
                 ind += 1
 
             # If the current position is in the timing strip, then skip one column to the left
-            if pos[1] == self.CORNER_SIZE - 1:
+            if pos[1] == CORNER_SIZE - 1:
                 pos = pos + [0, -1]
 
             # Compute the next position (horizontal or diagonal) based on hflag
@@ -315,8 +272,9 @@ class QRmatrix:
     # PATTERN MASKING
     # =================================================================
 
-    # Function to add the optimal pattern mask to the QR-code matrix
     def pattern_mask(self) -> None:
+        """Apply the optimal pattern mask to the QR-code matrix."""
+
         # Initialize the max_penalty to something large
         max_penalty = 100000
         best_mask_num = -1
@@ -325,7 +283,7 @@ class QRmatrix:
         # Iterate over all possible mask patterns
         for masknum in range(0, 8):
             # Add the format information array for the current mask number
-            fmt_arr = self.gen_format_arr(masknum)
+            fmt_arr = np.array(self._spec.format_to_bool_array(masknum))
             self._add_format_info(fmt_arr)
 
             # Copy the current QR code matrix

@@ -2,10 +2,14 @@ import logging
 
 import argparse
 
-from .QRcode import QRcode
 from .terminal import print_to_terminal
 
-logger = logging.getLogger(__name__)
+try:
+    from .QRcode import QRcode
+except ImportError:
+    print("Could not import the QR code package: Spec file missing!!! ")
+    raise SystemExit
+
 
 def init_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -24,16 +28,16 @@ def init_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--enc",
         metavar="ENCODING",
-        type=int,
-        default=2,
-        help="Data type to encode the given string with (0/1/2 for numeric/alphanumeric/binary, default = binary)",
+        type=str,
+        default="binary",
+        help="Encoding (numeric/alphanumeric/binary, default = binary)",
     )
     parser.add_argument(
         "--ecl",
         metavar="EC_LEVEL",
         type=str,
         default="M",
-        help="Error correction level (L/M/Q/H, default=M)",
+        help="Error correction level (L/M/Q/H, default=Q)",
     )
     parser.add_argument(
         "--out", metavar="FILENAME", help="Output image file (default extension = png)"
@@ -67,36 +71,50 @@ def export_qrcode(qrobj: QRcode, fname: str) -> None:
 def display_stats(stats):
     print("QR Code:")
     print(f"  Version = {stats['version']}")
-    print(f"  Encoding = {stats['encoding']}")
-    print(f"  Error Correction Level = {stats['ec_level']}")
+    print(f"  Encoding = {stats['encoding'].lower()}")
+    print(f"  Error Correction Level = {stats['error_correction_level']}")
+    print(f"  Encoded using pattern mask number {stats['pattern_mask_number']}")
     print()
+
     print(
         f"  Size of the QR-code = {stats['qr_size']} x {stats['qr_size']} = {stats['qr_size'] ** 2} modules"
     )
-    print(f"  Number of preset modules = {stats['num_func_mods']}")
-    print(f"  Number of data modules = {stats['num_data_mods']}")
-    print(f"  Encoded using pattern mask number {stats['masknum']}")
-    print()
-    print(f"  Message Length = {stats['message_length']}")
-    print(f"  Total number of data codewords = {stats['num_data_words']}")
-    print(f"  Number of message codewords = {stats['num_msg_words']}")
+    print(f"  Maximum number of codewords = {stats['capacity']}")
+    print(f"  Number of data codewords = {stats['num_data_words']}")
     print(
-        f"  Number of error correction codewords = {stats['num_data_words'] - stats['num_msg_words']}"
+        f"  Number of error correction codewords = {stats['num_error_correction_words']}"
     )
+    print()
+
+    print(f"  Encoded Message = {stats['message']}")
+
+    print(f"  Message Length = {stats['message_length']} characters")
 
 
 def main() -> None:
+    logging.basicConfig(
+        format="{asctime}: {levelname} - {name} - {message}",
+        style="{",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        filename="./qrcode.log",
+        filemode="w",  # Overwrite the log file each time
+        level=logging.INFO,
+    )
+
     parser = init_parser()
     args = parser.parse_args()
 
-    qrobj = QRcode(args.message, version=args.ver, encoding=args.enc, errcode=args.ecl)
-    qrobj.generate()
-    # try:
-    #     qrobj = QRcode(args.message, version=args.ver, dtype=args.enc, errcode=args.ecl)
-    #     qrobj.generate()
-    # except Exception as e:
-    #     print("Error creating QR code: " + str(e))
-    #     raise SystemExit
+    try:
+        qrobj = QRcode(
+            args.message,
+            version=args.ver,
+            encoding=args.enc,
+            error_correction_level=args.ecl,
+        )
+        qrobj.generate()
+    except Exception as e:
+        print("Error creating QR code: " + str(e))
+        raise SystemExit
 
     if args.out:
         export_qrcode(qrobj, args.out)

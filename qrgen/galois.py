@@ -1,17 +1,16 @@
-import numpy as np
-
 """
 This modules contains functions to perform arithmetic operations in the Galois field
-GF(2) and GF(2^8). These operations are used in the Reed-Solomon error correction 
-algorithm in the QR code standard. 
+GF(2) and GF(2^8). These operations are used in the Reed-Solomon error correction
+algorithm in the QR code standard.
 
 """
+
 # Generator for the Galois field GF(2^8). The bits in the binary representation of 285
 # are interpreted as the coefficients of the polynomial over GF(2)
 GALOIS_GEN = 285
 
 
-# GENERATING THE LOG AND ANTILOG TABLES
+# GENERATE THE LOG AND ANTILOG TABLES ON GF(2^8)
 # =============================================
 
 
@@ -42,16 +41,16 @@ GF_logs, GF_antilogs = gen_GF_log_tables()
 # =============================================
 
 
-# Multiplication of two values in the Galois field GF(2^8) using precomputed log tables
 def GF_mult(x: int, y: int) -> int:
+    """Multiply two values in the Galois field GF(2^8) using precomputed log tables."""
     if x == 0 or y == 0:
         return 0
     else:
         return GF_antilogs[(GF_logs[x] + GF_logs[y]) % 255]
 
 
-# Division of two values in the Galois field GF(2^8) using precomputed log tables
 def GF_div(x: int, y: int) -> int:
+    """Divide two values in the Galois field GF(2^8) using precomputed log tables."""
     if x == 0:
         return 0
     elif y == 0:
@@ -60,15 +59,15 @@ def GF_div(x: int, y: int) -> int:
         return GF_antilogs[(GF_logs[x] - GF_logs[y]) % 255]
 
 
-# Multiplication of two polynomials in the Galois field GF(2^8) using precomputed log tables
 def GF_mult_poly(poly1: list[int], poly2: list[int]) -> list[int]:
-    # Compute the lengths of the given polynomials and the product
+    """Multiply two polynomials in the Galois field GF(2^8)."""
+
+    # Compute the lengths of the given polynomials and their product
     nterms1 = len(poly1)
     nterms2 = len(poly2)
     nterms = nterms1 + nterms2 - 1
 
     # Initialize an array to store the product
-    # prod = np.zeros(nterms, dtype=np.uint8)
     prod = [0] * nterms
     for i in range(nterms):
         jmin = max(0, i - nterms2 + 1)
@@ -78,8 +77,12 @@ def GF_mult_poly(poly1: list[int], poly2: list[int]) -> list[int]:
     return prod
 
 
-# Division of two polynomials in the Galois field GF(2^8) using precomputed log tables
+# TODO: Return both quotient and remainder and choose the one that is needed in the caller
 def GF_div_poly(poly1: list[int], poly2: list[int]) -> list[int]:
+    """Divide two polynomials in the Galois field GF(2^8).
+
+    Returns the remainder of the division."""
+
     # Compute the lengths of the given polynomials and the product
     nterms1 = len(poly1)
     nterms2 = len(poly2)
@@ -101,33 +104,3 @@ def GF_div_poly(poly1: list[int], poly2: list[int]) -> list[int]:
             ptmp[i + j] ^= GF_mult(poly2[j], fact)
 
     return ptmp[-nterms2 + 1 :]
-
-
-# function to find first True in a boolean array
-def find_start(arr: list[bool]) -> int:
-    for i in range(len(arr)):
-        if arr[i]:
-            return i
-    return len(arr)
-
-
-# Compute the error correction bits for a boolean array
-# MODIFY TO AVOID USING NUMPY!!
-def compute_ecbits(msg_coeffs: list[bool], ec_coeffs: list[bool]) -> list[bool]:
-    msg_len = len(msg_coeffs)
-    ec_len = len(ec_coeffs)
-    total_len = msg_len + ec_len - 1
-
-    tmp_coeffs = np.zeros(total_len, dtype=bool)
-    tmp_coeffs[:msg_len] = msg_coeffs
-
-    start = find_start(tmp_coeffs)
-    while start + ec_len <= total_len:
-        np.logical_xor(
-            tmp_coeffs[start : start + ec_len],
-            ec_coeffs,
-            out=tmp_coeffs[start : start + ec_len],
-        )
-        start = find_start(tmp_coeffs)
-
-    return list(tmp_coeffs[-ec_len + 1 :])

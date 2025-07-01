@@ -1,83 +1,99 @@
 import logging
 
-# Configure logging here to ensure that it is set up before any other imports that might use logging
-logging.basicConfig(
-    format="{levelname} - {name} - {message}",
-    style="{",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    filename="../qrcode.log",
-    filemode="w",  # 'w' to overwrite the log file each time
-    level=logging.DEBUG,
-)
-
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
 from .QRmatrix import QRmatrix
-from .specification import QRspec, get_optimal_spec
+from .spec import QRspec, get_spec
 from .encoding import encode
 from .interlacing import split_data_in_blocks, interlace_blocks, bits_from_blocks
 from .error_correction import compute_EC_blocks
-
 
 logger = logging.getLogger(__name__)
 
 
 class QRcode:
-    """Class for generating QR codes."""
+    """Class for generating QR codes.
 
-    DATATYPE_ID = {0: "Numeric", 1: "Alphanumeric", 2: "Binary"}
-    MAX_CAPACITY = {0: 7089, 1: 4296, 2: 2953}
+    This class takes a string and generates a QR code based on the following parameters
+    (which are passed as keyword arguments to the constructor):
+        - `version`: an integer between 1 and 40 (both inclusive)
+        - `error_correction_level`: 'L', 'M', 'Q', or 'H' (default = 'Q')
+        - `encoding`: 'numeric', 'alphanumeric', or 'binary' (default = binary).
+    If a version is not provided, the smallest version that can encode the message with
+    the specified error correction level and encoding will be chosen automatically.
 
-    EC_LEVEL_ID = {0: "M", 1: "L", 2: "H", 3: "Q"}
-    EC_LEVEL_CODE = {"L": 1, "M": 0, "Q": 3, "H": 2}
+    The constructor raises a TypeError or ValueError if the provided parameters are invalid.
+    The 'KANJI' encoding is not implemented and raises a NotImplementedError.
 
-    # Default encoding = binary
-    # Default error correction level = M
-    # If a version number is not provided, then it is computed based on the length of the message
+    The QR code is generated only when it is needed by one of the public methods, which includes
+    'display()', 'export()', 'get_image()', and 'get_stats()`. See the corresponding docstrings for
+    more details on each method. Once generated, the QR code is stored and is not regenerated for
+    the subsequent calls to the public methods. The (re)generation of the QR code can be forced at
+    any time by calling the `generate()` method.
+    """
 
     def __init__(
         self,
         msg: str = "",
+        *,
         version: int | None = None,
-        encoding: int = 2,
-        errcode: str = "M",
+        error_correction_level: str = "Q",
+        encoding: str = "binary",
     ):
-        logging.info("Initializing QRcode object...")
+        if version is not None and not isinstance(version, int):
+            raise TypeError(f" integer expected for version, instead got '{version}'")
 
+        if not isinstance(encoding, str):
+            raise TypeError(
+                f" string ('numeric', 'alphanumeric', or 'binary') expected for encoding, instead got '{encoding}'"
+            )
+
+        if not isinstance(error_correction_level, str):
+            raise TypeError(
+                f" string ('L', 'M', 'Q', or 'H') expected for error correction level, instead got '{error_correction_level}'"
+            )
+
+        logging.info("Input data types valid. Initializing QRcode object.")
+        self.msg = str(msg)
         try:
-            _validate_inputs(version, encoding, errcode)
-        except (ValueError, TypeError, NotImplementedError) as e:
-            logging.error(f"Invalid input: {e}")
-            raise e
-
-        self.msg = msg
-        self.encoding = encoding
-        EC_level = self.EC_LEVEL_CODE[errcode]
-        self._spec: QRspec = get_optimal_spec(len(msg), version, EC_level, encoding)
+            self._spec: QRspec = get_spec(
+                len(msg), version, error_correction_level, encoding
+            )
+        except ValueError as err:
+            logging.exception(err)
+            raise
 
     def generate(self) -> None:
         """Generates the QR code based on the provided message and specifications."""
 
-        logging.info("Generating QR code.")
-        data = encode(spec=self._spec, msg=self.msg, dtype=self.encoding)
-        data_blocks = split_data_in_blocks(data, spec=self._spec)
-        EC_blocks = compute_EC_blocks(self._spec, data_blocks)
+        logging.info(f"Encoding the data in {self._spec.encoding.name.lower()} mode.")
+        data = encode(spec=self._spec, msg=self.msg)
+
+        logging.info("Adding error correction bits.")
+        data_blocks = split_data_in_blocks(self._spec, data)
+        EC_blocks = compute_EC_blocks(self._spec.EC_bytes_per_block, data_blocks)
         all_blocks = interlace_blocks(self._spec, data_blocks, EC_blocks)
         bitstring = bits_from_blocks(all_blocks)
+        logging.info("Encoded data generated successfully.")
 
-        logging.info("Adding to a matrix.")
-        self.qr_obj = QRmatrix(self._spec.version, self._spec.EC_level)
+        logging.info("Adding the data to the QR code matrix.")
+        self.qr_obj = QRmatrix(self._spec)
         self.qr_obj.add_data(bitstring)
         self.qr_obj.pattern_mask()
         self.qrmat = self.qr_obj.mat
 
-        logging.info("Generating image from matrix.")
+        logging.info("Generating image from the QR-code matrix.")
         self._create_image()
 
+    def __str__(self):
+        if not hasattr(self, "qrmat"):
+            return "QR code not generated"
+        return "Encoded message = " + self.msg
+
     def _create_image(self) -> None:
-        # Generate the QR code image (with white padding)
+        """Creates a PIL Image object from the QR code matrix."""
         padding = 6
         self.tmp_img = Image.fromarray(np.uint8(~self.qrmat) * 255)
         width, height = self.tmp_img.size
@@ -90,13 +106,12 @@ class QRcode:
         )
         self.qrimg.paste(self.tmp_img, (padding, padding))
 
-    # PRINTING ROUNTINES
-    # =================================================================
+    def get_image(self) -> Image:
+        """Returns the QR code as a PIL Image object."""
+        if not hasattr(self, "qrimg"):
+            self.generate()
 
-    def __str__(self):
-        if not hasattr(self, "qrmat"):
-            return "QR code not generated"
-        return "Encoded message = " + self.msg
+        return self.qrimg
 
     def display(self):
         """Displays the QR code using matplotlib."""
@@ -108,13 +123,6 @@ class QRcode:
         fig.subplots_adjust(left=0.25, right=0.75, top=0.75, bottom=0.25)
         ax.imshow(self.qrimg, cmap="gray", vmin=0, vmax=255)
         plt.show()
-
-    def get_image(self) -> Image:
-        """Returns the QR code as a PIL Image object."""
-        if not hasattr(self, "qrimg"):
-            self.generate()
-
-        return self.qrimg
 
     def export(self, filename: str, scale: int = 20) -> None:
         """Exports the QR code to an image file."""
@@ -142,39 +150,19 @@ class QRcode:
             self.generate()
 
         stats = {}
-        stats["version"] = self.version
-        stats["encoding"] = self.DATATYPE_ID[self.encoding]
-        stats["ec_level"] = self.EC_LEVEL_ID[self.errlvl]
-        stats["masknum"] = self.qr_obj.masknum
-
+        stats["version"] = self._spec.version
+        stats["encoding"] = self._spec.encoding.name
+        stats["error_correction_level"] = self._spec.error_correction_level.name
         stats["qr_size"] = self.qr_obj.size
-        stats["num_func_mods"] = self.qr_obj.num_func_bits
-        stats["num_data_mods"] = self.qr_obj.size**2 - self.qr_obj.num_func_bits
-        stats["num_data_words"] = self.data_obj.num_databytes
-        stats["num_msg_words"] = self.data_obj.num_msgbytes
+
+        stats["capacity"] = self._spec.capacity_in_bytes
+        stats["num_data_words"] = self._spec.datalen_in_bytes
+        stats["num_error_correction_words"] = (
+            self._spec.capacity_in_bytes - self._spec.datalen_in_bytes
+        )
 
         stats["message"] = self.msg
-        stats["message_length"] = self.msglen
+        stats["message_length"] = len(self.msg)
+        stats["pattern_mask_number"] = self.qr_obj.masknum
 
         return stats
-
-
-def _validate_inputs(version, encoding, errcode):
-    """Validates the inputs for the QR code generation.
-
-    Raises ValueError, TypeError, or NotImplementedError if the inputs are invalid."""
-
-    if version is not None and not isinstance(version, int):
-        raise TypeError(f"{version} is not a valid version number; integer expected!")
-
-    if not isinstance(encoding, int):
-        raise TypeError(f"{encoding} is not a valid data type; integer expected!")
-    elif encoding not in [0, 1, 2]:
-        raise ValueError(f"{encoding} is not a valid data type; only 0-3 expected!")
-    elif encoding == 3:
-        raise NotImplementedError("Kanji mode (Data type 3) not supported!")
-
-    if errcode is not None and errcode not in ["L", "M", "Q", "H"]:
-        raise ValueError(
-            f"{errcode} is not a valid error correction levels! Expected values are 'L', 'M', 'Q', or 'H'!"
-        )

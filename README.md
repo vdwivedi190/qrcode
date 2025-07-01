@@ -23,10 +23,12 @@ An object of this class can be created most simply by providing a message string
 msg = "Hello World!"
 qrobj = QRcode(msg) 
 ```
-This chooses a suitable version and encodes `msg` as a binary string with error correction level M. The version, encoding and error correction level can instead be provided explicitly as 
+This chooses encodes `msg` as a binary string with error correction level Q in a QR code of the smallest possible size. The version, encoding and error correction level can instead be provided explicitly as keyword arguments:
 ```
-qrobj = QRcode(msg, version=3, dtype=2, errcode='Q')
+qrobj = QRcode(msg, version=3, error_correction_level="M", encoding='binary')
 ```
+If the encoding and error correction level are not provided, they deafult to `binary` and `Q`, respectively. If a version is not provided, the smallest possible version is computed for which the data can be encoded using the provided encoding and error correction level. The constructor raises a `ValueError` or `TypeError` for invalid inputs. 
+
 The relevant methods associated with this object are:
 
   - `QRcode.get_image()`: Returns the QR-code as a PIL `Image` object.
@@ -35,7 +37,8 @@ The relevant methods associated with this object are:
   - `QRcode.get_stats()`: Returns a dictionary with various parameters associated with the generated QR-code
   - `QRcode.generate()`: Generates the QR-code. This function is automatically called by the functions above and the resulting QR-code matrix and image cached.
       
-Note that the generation of the QR code is lazy, i.e., the QR code is not generated until it is required. A `ValueError` is raised by `QRcode.generate()` if the message is too long to be encoded by a QR-code of a given version, or if the message contains characters incompatible with the desired encoding, such as non-numeric characters if `dtype=0` (numeric mode) is specified. 
+Note that the generation of the QR code is lazy, i.e., the QR code is not generated until it is required. It can, however, be forced by calling `QRcode.generate()`.
+
 
 ### Running from the terminal
 The module can be directly invoked from the terminal as `python -m qrgen ...`. The various allowed options are 

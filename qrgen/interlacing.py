@@ -1,13 +1,13 @@
 import logging
 
-from .specification import QRspec
-from .utils import int_to_bool
+from .spec import QRspec
+from .utils import int_to_bool_list
 
 
 logger = logging.getLogger(__name__)
 
 
-def split_data_in_blocks(data: list[int], spec: QRspec) -> list[list[int]]:
+def split_data_in_blocks(spec: QRspec, data: list[int]) -> list[list[int]]:
     """Splits the data into blocks according to the QR code specification."""
 
     data_blocks = []
@@ -68,5 +68,5 @@ def bits_from_blocks(data: list[int]) -> list[bool]:
     """Converts a list of blocks (each block is a list of integers) into a flat list of bits."""
     result = []
     for i in data:
-        result.extend(int_to_bool(i, 8))
+        result.extend(int_to_bool_list(i, 8))
     return result
