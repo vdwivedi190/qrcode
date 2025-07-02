@@ -9,11 +9,9 @@ logger = logging.getLogger(__name__)
 
 # Sizes of the corner and alignment blocks
 CORNER_SIZE = 7
-ALIGNMENT_BLOCKSIZE = 5
+ALIGNMENT_BLOCK_SIZE = 5
 
-# Boolean arrays for computing the error correction bits
-# These are used to compute the error correction bits for the version and format information.
-# The polynomials are defined in the QR code standard.
+# Boolean arrays for computing the error correction bits as defined in the QR code standard.
 VERSION_POLYNOMIAL: list[bool] = str_to_bool_list("1111100100101")
 FORMAT_POLYNOMIAL: list[bool] = str_to_bool_list("10100110111")
 FORMAT_MASK: list[bool] = str_to_bool_list("101010000010010")
@@ -182,17 +180,6 @@ def _compute_encoded_len(msglen: int, encoding: Encoding) -> int:
             raise NotImplementedError("Kanji encoding not implemented!")
 
     return msg_bits
-
-
-# def _get_optimal_version(datalen: int, EC_level: int, spec_dict:dict[tuple[int,int], DataSpec]) -> int:
-#     """Returns the optimal version for the given data length and error correction level."""
-#     for version in range(1, MAX_VERSION + 1):
-#         if (version, EC_level) in spec_dict:
-#             if spec_dict[(version, EC_level)].datalen_in_bits >= datalen:
-#                 return version
-#     raise ValueError(
-#         f" cannot encode {datalen} bits with error correction level {EC_level} for any version."
-#     )
 
 
 def get_spec(

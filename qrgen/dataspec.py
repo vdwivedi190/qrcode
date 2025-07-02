@@ -82,9 +82,7 @@ def spec_dict_from_file(
                 try:
                     version, EC_level, dataspec = _parse_data_spec(line)
                 except ValueError:
-                    logger.info(
-                        f"Skipping invalid line in {filename}: {line.strip()}"
-                    )
+                    logger.info(f"Skipping invalid line in {filename}: {line.strip()}")
                     continue
                 spec_dict[(version, EC_level)] = dataspec
     except FileNotFoundError as err:
