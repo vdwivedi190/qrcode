@@ -55,7 +55,7 @@ positional arguments:
 options:
   -h, --help      show this help message and exit
   --ver VERSION   QR version to encode with (between 1 and 40, chosen automatically if not provided)
-  --enc ENCODING  Data type to encode the given string with (0/1/2 for numeric/alphanumeric/binary, default = binary)
+  --enc ENCODING  Encoding (numeric/alphanumeric/binary, default = binary)
   --ecl EC_LEVEL  Error correction level (L/M/Q/H, default=Q)
   --out FILENAME  Output image file (default extension = png)
   -d              Display the QR-code on the screen
