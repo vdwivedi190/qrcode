@@ -15,16 +15,16 @@ The module can be used either by importing it or invoked directly from the termi
 
 ### Importing the module 
 The module provides a class `QRcode`, which can be imported as 
-```
+```python
 from qrgen import QRcode
 ```
 An object of this class can be created most simply by providing a message string as 
-```
+```python
 msg = "Hello World!"
 qrobj = QRcode(msg) 
 ```
 This chooses encodes `msg` as a binary string with error correction level Q in a QR code of the smallest possible size. The version, encoding and error correction level can instead be provided explicitly as keyword arguments:
-```
+```python
 qrobj = QRcode(msg, version=3, error_correction_level="M", encoding='binary')
 ```
 If the encoding and error correction level are not provided, they deafult to `binary` and `Q`, respectively. If a version is not provided, the smallest possible version is computed for which the data can be encoded using the provided encoding and error correction level. The constructor raises a `ValueError` or `TypeError` for invalid inputs. 
